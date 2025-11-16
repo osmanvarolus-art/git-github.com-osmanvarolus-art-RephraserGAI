@@ -1,0 +1,5 @@
+{
+  "name": "EchoWrite AI",
+  "description": "An intelligent text rephrasing tool powered by Gemini, allowing you to transform your writing into various tones like professional, casual, or confident with a single click.",
+  "requestFramePermissions": []
+}
