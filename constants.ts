@@ -8,6 +8,7 @@ export const PERSONAS: Persona[] = [
   { id: 'legacy-refactor', name: 'Legacy Alchemist (Code)', emoji: '🏗️' },
   { id: 'medical-claim', name: 'Medical Claim (Insurance)', emoji: '⚕️' },
   { id: 'semantic-dna', name: 'Semantic DNA (Keywords)', emoji: '🧬' },
+  { id: 'brainstorming', name: 'Brainstorming (Workflow)', emoji: '⚡' },
   
   // --- Standard Tier ---
   { id: 'viral-creator', name: 'Viral Creator', emoji: '🚀' },

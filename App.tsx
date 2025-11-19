@@ -37,7 +37,7 @@ interface PersonaSelectorProps {
   isLoading: boolean;
 }
 const PersonaSelector: FC<PersonaSelectorProps> = ({ selectedPersona, onExecute, isLoading }) => {
-  const highValueIds = ['executive-brief', 'legal-shield', 'legacy-refactor', 'medical-claim', 'semantic-dna'];
+  const highValueIds = ['executive-brief', 'legal-shield', 'legacy-refactor', 'medical-claim', 'semantic-dna', 'brainstorming'];
 
   return (
     <div className="flex flex-wrap gap-2">
@@ -148,7 +148,7 @@ export default function App() {
   };
 
   const selectedPersonaDetails = PERSONAS.find(p => p.id === selectedPersona);
-  const isThinkingAgent = ['executive-brief', 'legal-shield', 'legacy-refactor', 'medical-claim', 'semantic-dna'].includes(selectedPersona);
+  const isThinkingAgent = ['executive-brief', 'legal-shield', 'legacy-refactor', 'medical-claim', 'semantic-dna', 'brainstorming'].includes(selectedPersona);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 antialiased relative selection:bg-indigo-500/30">

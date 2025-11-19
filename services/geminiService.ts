@@ -183,6 +183,31 @@ Identify one critical "Contextual Vacuum" for each dimension. What high-value ke
 ${tuningContext}
 `;
 
+  // --- 6. BRAINSTORMING (Workflow Architect) ---
+  } else if (tone === 'brainstorming') {
+    generationConfig = {
+      thinkingConfig: { thinkingBudget: 2048 },
+      temperature: 0.8,
+    };
+    systemInstruction = `You are a Principal Solutions Architect and Unix Philosopher.
+    Your goal is to take abstract requirements and "brainstorm" a concrete, composable technical workflow.
+    You prefer lightweight, modular tools (Bash, Python scripts, CLI pipes, API chains) over heavy enterprise software.
+    You are detail-oriented about data flow (stdin/stdout).`;
+
+    prompt = `Brainstorm a technical implementation or workflow for the following request.
+
+    Request: "${text}"
+
+    Directives:
+    1. **The Stack**: Define the specific tools (e.g., "Bash + jq + Ollama" or "Node.js streams + Redis").
+    2. **The Pipeline**: Describe the flow of data (A | B > C).
+    3. **The Code**: Provide the core functions or scripts (Shell functions, API definitions, etc.).
+    ${tuningContext}
+    ---
+    **MISSING MATTER ANALYSIS**:
+    Identify the "Single Point of Failure" in this brainstormed architecture. What is the weakest link or missing dependency?
+    `;
+
   // --- STANDARD PERSONAS ---
   } else if (tone === 'prompt-engineering') {
      prompt = `Transform this source text into an optimized prompt:\n\nSource Text:\n${text}\n${tuningContext}`;
