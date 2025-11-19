@@ -7,6 +7,8 @@ export const PERSONAS: Persona[] = [
   { id: 'friendly', name: 'Friendly', emoji: '😊' },
   { id: 'persuasive', name: 'Persuasive', emoji: '🎯' },
   { id: 'concise', name: 'Concise', emoji: '✂️' },
+  { id: 'viral-creator', name: 'Viral Creator', emoji: '🚀' },
+  { id: 'analogy-master', name: 'Analogy Master', emoji: '💡' },
   { id: 'code-expert', name: 'Code Expert', emoji: '💻' },
   { id: 'questioner', name: 'Questioner', emoji: '🤔' },
   { id: 'creative', name: 'Creative', emoji: '🎨' },

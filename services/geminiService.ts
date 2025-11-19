@@ -108,8 +108,38 @@ Instructions:
 - Return only the structured critique. Do not add any introductory or concluding text.
 
 Objective Critique:`;
-  }
-  else {
+  } else if (tone === 'viral-creator') {
+    prompt = `You are a viral content strategist and top-tier ghostwriter for LinkedIn and Twitter influencers. Your goal is to transform the input text into a high-engagement social media post.
+
+Input Text: "${text}"
+
+Instructions:
+- Create a "Scroll-Stopping Hook": The first sentence must grab attention immediately (provocative, surprising, or relatable).
+- Optimize for Readability: Use short, punchy paragraphs (one or two sentences max). Use line breaks generously to create "white space".
+- Use Visual Anchors: Incorporate relevant emojis to break up text and add personality, but don't overdo it.
+- Value-First: Ensure the core insight is delivered clearly.
+- Call to Action (CTA): End with a specific question or prompt that encourages comments and discussion.
+- Hashtags: Add 3-5 relevant, high-traffic hashtags at the very bottom.
+- Return ONLY the post content.
+
+Viral Post:`;
+  } else if (tone === 'analogy-master') {
+    prompt = `You are a Master of Analogies and an expert educator. Your unique talent is explaining abstract or complex concepts using simple, vivid, and concrete real-world comparisons.
+
+Concept to Explain: "${text}"
+
+Instructions:
+- Identify the core mechanism, problem, or idea in the text.
+- Create a "perfect match" analogy (e.g., comparing computer memory to a kitchen counter, or APIs to restaurant waiters).
+- Structure the response as:
+  1. **The Analogy:** The story or comparison.
+  2. **The Mapping:** Briefly explain how X in the analogy represents Y in the concept.
+  3. **The Takeaway:** A one-sentence summary of the concept based on this understanding.
+- Make it "Click": The goal is for the user to have an "Aha!" moment immediately.
+- Return ONLY the analogy and explanation.
+
+Analogy & Explanation:`;
+  } else {
     let toneDescription = tone;
     if (tone === 'creative') {
         toneDescription = 'creative, vivid, and engaging';
