@@ -1,171 +1,225 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 const PROMPT_ENGINEERING_SYSTEM_PROMPT = `You are a Meticulous Systems Architect operating inside the HybridAgentStack Shared Intelligence Framework.
 
 Your Mission:
-Transform the source text into a high-quality, Tier-3 Tactical Execution prompt suitable for any CLI AI agent (Claude Code, Gemini CLI, Ollama, etc.).
+Transform the source text into a high-quality, Tier-3 Tactical Execution prompt suitable for any CLI AI agent.
 
 Engineering Requirements:
 1. Reduce verbosity by 40–60%
 2. Increase conceptual depth by 5–10×
 3. Add structure, clarity, and architectural coherence
 4. Be fully self-contained and executable
-5. Incorporate latest AI technologies (multimodal, reasoning, agentic patterns)
-6. Leverage best practices from Gemini, ChatGPT, and Claude
-7. Design for maximum utility and precision output
-8. Use system design principles: modularity, composability, resilience
 
 Output Format (JSON):
 {
   "optimized_prompt": "The fully engineered, production-ready prompt",
   "architectural_notes": "Technical design decisions and reasoning",
-  "usage_guidance": "How to use this prompt with different AI platforms (Claude, Gemini, Ollama)"
+  "usage_guidance": "How to use this prompt"
 }
 
 Return ONLY the JSON block—no additional text.`;
 
+export interface TuningParams {
+  granularity: number; // 0-100
+  risk: number;        // 0-100
+  assertiveness: number; // 0-100
+}
+
 export async function rephraseText(
   text: string,
   tone: string,
+  tuning?: TuningParams
 ): Promise<string> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  // Default Config
+  let modelName = 'gemini-2.5-flash';
+  let generationConfig: any = {
+    temperature: 0.7,
+  };
+  
+  let prompt: string;
+  let systemInstruction: string | undefined = undefined;
 
-  if (tone === 'prompt-engineering') {
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `Transform this source text into an optimized prompt:\n\nSource Text:\n${text}`,
-        config: {
-          systemInstruction: PROMPT_ENGINEERING_SYSTEM_PROMPT,
-          responseMimeType: "application/json",
-        },
-      });
-      return response.text.trim();
-    } catch (error) {
-      console.error("Gemini API Error (Prompt Engineering):", error);
-      throw new Error("Failed to engineer prompt. Please try again later.");
-    }
+  // Construct Tuning Context if present
+  let tuningContext = "";
+  if (tuning) {
+    tuningContext = `
+---
+**REALITY TUNING PARAMETERS**:
+Apply the following dimensional adjustments to the output tone and content:
+- **Technical Granularity**: ${tuning.granularity}% (0=Simple, 100=Dense Technical Jargon)
+- **Risk Tolerance**: ${tuning.risk}% (0=Safe/Conservative, 100=High Risk/Gamble)
+- **Assertiveness**: ${tuning.assertiveness}% (0=Passive/Diplomatic, 100=Dominant/Aggressive)
+`;
   }
 
-  let prompt: string;
+  // --- 1. THE EXECUTIVE BRIEF (Strategic Compression) ---
+  if (tone === 'executive-brief') {
+    generationConfig = {
+        thinkingConfig: { thinkingBudget: 1024 },
+        temperature: 0.7,
+    };
+    systemInstruction = `You are a Principal Semantic Architect and Chief Strategy Officer. 
+    
+    Your goal is NOT just to summarize, but to perform a "Reality Shift" on the content.
+    Analyze the Input Data across three dimensions:
+    1. **Technical**: Syntax normalization and fact extraction.
+    2. **Cognitive**: Reducing cognitive load for the reader.
+    3. **Economic**: Highlighting financial risk and opportunity.`;
+    
+    prompt = `Transform the following text into an Executive Strategy Brief.
 
-  if (tone === 'code-expert') {
-    prompt = `You are a world-class software engineer and prompt engineering expert. Your task is to refine, correct, or improve the given programming-related text, which could be a code snippet, a technical question, or an explanation.
+Input Data: "${text}"
 
-Task: Analyze and improve the following text.
-Text: "${text}"
-
-Instructions:
-- If it's a code snippet, identify bugs, suggest performance improvements, or enhance readability (e.g., better variable names, comments). Return the improved code, explaining the changes in comments within the code itself.
-- If it's a technical question, refine it to be clearer, more specific, and more likely to receive a high-quality answer on a platform like Stack Overflow.
-- If it's a technical explanation, make it more accurate, clear, and concise.
-- Only return the improved text/code.
-- Do not add introductory phrases like "Here is the improved code:".
-- Preserve the original programming language and intent.
-
-Improved Version:`;
-  } else if (tone === 'questioner') {
-    prompt = `You are an expert tutor. Your task is to break down the provided text into a series of essential questions and clear answers to help a user understand the core concepts.
-
-Topic Text: "${text}"
-
-Instructions:
-- Analyze the text to identify the main topic and key points.
-- Generate a list of key questions that cover the essential aspects of the subject.
-- Provide a concise, easy-to-understand answer for each question.
-- Format the output in a clear Q&A style. Use Markdown for bolding the questions.
-- Return only the list of questions and answers. Do not add any introductory or concluding text.
-
-Q&A Breakdown:`;
-  } else if (tone === 'notebooklm') {
-    prompt = `You are a technical writer specializing in documentation. Your task is to transform the following text into a well-structured markdown format suitable for platforms like NotebookLM or knowledge bases.
-
-Text to transform: "${text}"
-
-Instructions:
-- Analyze the text and identify headings, lists, code blocks, and other structural elements.
-- Convert the text into clean, readable markdown.
-- Use appropriate heading levels (#, ##, etc.).
-- Format lists as bullet points or numbered lists.
-- Enclose code snippets in markdown code blocks (\`\`\`).
-- Return only the transformed markdown content. Do not add any introductory or concluding text.
-
-Markdown Version:`;
-  } else if (tone === 'objective-critic') {
-    prompt = `You are a "Red Team" specialist and objective critic. Your task is to rigorously analyze the user's idea, particularly for AI or software projects, and provide a constructive critique. Your goal is to identify potential weaknesses, challenges, and unconsidered aspects to strengthen the final concept.
-
-Idea to critique: "${text}"
-
-Instructions:
-- Do not be overly negative; your critique should be objective and actionable.
-- Structure your analysis using the following Markdown headings:
-  - **Overall Concept Analysis:** A brief summary of the idea and its core value proposition.
-  - **Potential Flaws & Blind Spots:** What are the logical inconsistencies or overlooked user needs?
-  - **Technical & Implementation Hurdles:** What are the key engineering challenges? Consider scalability, data requirements, and algorithmic complexity.
-  - **Market & Viability Questions:** Who are the competitors? What is the unique selling proposition? How would it be monetized?
-  - **User Experience (UX) Concerns:** Where might users get frustrated or confused?
-  - **AI & Ethical Considerations (if applicable):** Are there risks of bias, data privacy issues, or unintended consequences?
-- Return only the structured critique. Do not add any introductory or concluding text.
-
-Objective Critique:`;
-  } else if (tone === 'viral-creator') {
-    prompt = `You are a viral content strategist and top-tier ghostwriter for LinkedIn and Twitter influencers. Your goal is to transform the input text into a high-engagement social media post.
-
-Input Text: "${text}"
-
-Instructions:
-- Create a "Scroll-Stopping Hook": The first sentence must grab attention immediately (provocative, surprising, or relatable).
-- Optimize for Readability: Use short, punchy paragraphs (one or two sentences max). Use line breaks generously to create "white space".
-- Use Visual Anchors: Incorporate relevant emojis to break up text and add personality, but don't overdo it.
-- Value-First: Ensure the core insight is delivered clearly.
-- Call to Action (CTA): End with a specific question or prompt that encourages comments and discussion.
-- Hashtags: Add 3-5 relevant, high-traffic hashtags at the very bottom.
-- Return ONLY the post content.
-
-Viral Post:`;
-  } else if (tone === 'analogy-master') {
-    prompt = `You are a Master of Analogies and an expert educator. Your unique talent is explaining abstract or complex concepts using simple, vivid, and concrete real-world comparisons.
-
-Concept to Explain: "${text}"
-
-Instructions:
-- Identify the core mechanism, problem, or idea in the text.
-- Create a "perfect match" analogy (e.g., comparing computer memory to a kitchen counter, or APIs to restaurant waiters).
-- Structure the response as:
-  1. **The Analogy:** The story or comparison.
-  2. **The Mapping:** Briefly explain how X in the analogy represents Y in the concept.
-  3. **The Takeaway:** A one-sentence summary of the concept based on this understanding.
-- Make it "Click": The goal is for the user to have an "Aha!" moment immediately.
-- Return ONLY the analogy and explanation.
-
-Analogy & Explanation:`;
-  } else {
-    let toneDescription = tone;
-    if (tone === 'creative') {
-        toneDescription = 'creative, vivid, and engaging';
-    }
-    prompt = `You are an expert in writing and communication. Your task is to rephrase the given text to adopt a specific tone.
+Directives:
+1. **BLUF**: Start with a 2-sentence Bottom Line Up Front.
+2. **Strategic Impact**: What does this mean for the business? (Revenue, Risk, or Efficiency).
+3. **Key Actions**: Bullet points of what needs to happen next.
+${tuningContext}
+---
+**MISSING MATTER ANALYSIS**:
+After the brief, add a section titled "### 🔍 Contextual Vacuum Report".
+Identify what was *missing* from the original text that made it ineffective for an executive (e.g., "Lacked financial data," "Passive voice reduced authority," "Buried the lead").
+`;
   
-Tone: ${toneDescription}
-Text to rephrase: "${text}"
+  // --- 2. THE LEGAL SHIELD (Risk Analysis) ---
+  } else if (tone === 'legal-shield') {
+    generationConfig = {
+        thinkingConfig: { thinkingBudget: 2048 },
+        temperature: 0.3,
+    };
+    systemInstruction = `You are a Senior General Counsel and Risk Auditor. Your philosophy is "Defensive Pessimism." You assume the worst-case scenario interpretation of every sentence.`;
+    
+    prompt = `Analyze the following legal or policy text.
 
-Instructions:
-- Only return the rephrased text.
-- Do not add any introductory phrases, explanations, or concluding remarks like "Here is the rephrased text:".
-- Ensure the core meaning of the original text is preserved.
-- If the input text is empty or nonsensical, return an empty string.
+Text to Audit: "${text}"
 
-Rephrased text:`;
+Directives:
+1. **Plain English Translation**: Explain what this actually means.
+2. **Red Flags**: Identify clauses that are dangerous, unfair, or create hidden liability.
+3. **Loopholes**: Are there vague terms that could be exploited?
+${tuningContext}
+---
+**MISSING MATTER ANALYSIS**:
+After the audit, add a section titled "### 🔍 Contextual Vacuum Report".
+Highlight what protections are *absent* from the text (e.g., "Missing arbitration clause," "Undefined termination terms").
+`;
+
+  // --- 3. LEGACY ALCHEMIST (Code Modernization) ---
+  } else if (tone === 'legacy-refactor') {
+    generationConfig = {
+        thinkingConfig: { thinkingBudget: 4096 }, 
+        temperature: 0.2,
+    };
+    systemInstruction = `You are a Distinguished Software Architect. You prioritize Clean Architecture, SOLID principles, and Type Safety.`;
+    
+    prompt = `Refactor and Transmute the following code.
+
+Source Code: "${text}"
+
+Directives:
+1. **Modernize**: Convert this into the modern industry standard (e.g., jQuery -> React, Python 2 -> Python 3.12).
+2. **Type Safety**: Add strict typing.
+3. **Architectural Shift**: Improve the structure (extract functions, use hooks).
+${tuningContext}
+---
+**MISSING MATTER ANALYSIS**:
+After the code, add a section titled "### 🔍 Technical Debt Report".
+Identify specific "Code Smells" and "Architectural Rot" found in the original snippet (e.g., "Global state mutation," "Callback hell," "Magic numbers").
+`;
+
+  // --- 4. MEDICAL CLAIM (Insurance Narrative) ---
+  } else if (tone === 'medical-claim') {
+     generationConfig = {
+        thinkingConfig: { thinkingBudget: 2048 },
+        temperature: 0.4,
+    };
+    systemInstruction = `You are a Medical Coding Specialist and Insurance Claims Adjuster. Your goal is to translate raw clinical notes into "Medical Necessity" narratives that trigger approval algorithms.`;
+
+    prompt = `Transform the following raw medical notes into an Insurance Claim Narrative.
+
+Raw Notes: "${text}"
+
+Directives:
+1. **Clinical Narrative**: Rewrite the event as a structured medical history using professional terminology.
+2. **Medical Necessity**: Explicitly link symptoms to the required treatment to justify coverage.
+3. **ICD-10/CPT Hints**: Suggest likely codes based on the text (disclaimer: for reference only).
+${tuningContext}
+---
+**MISSING MATTER ANALYSIS**:
+After the narrative, add a section titled "### 🔍 Documentation Gap Report".
+Identify what critical clinical data is missing that might cause a claim denial (e.g., "Missing pain scale score," "Duration of symptoms not specified").
+`;
+
+  // --- 5. SEMANTIC DNA (Keyword Ecosystem) ---
+  } else if (tone === 'semantic-dna') {
+    generationConfig = {
+      thinkingConfig: { thinkingBudget: 1024 },
+      temperature: 0.5,
+    };
+    systemInstruction = `You are a Principal Semantic Architect. Your goal is to deconstruct the input text into its atomic value components. Do not rewrite the text. Extract the underlying value framework.`;
+
+    prompt = `Perform a Semantic DNA Extraction on the following input.
+
+Input Data: "${text}"
+
+Generate a tiered keyword ecosystem. Group them exactly by these dimensions:
+
+### 🧬 Technical Dimension (The Mechanics)
+*List specific keywords related to Latent Space Manipulation, Semantic Interoperability, or specific technologies mentioned or implied.*
+
+### 🧠 Cognitive Dimension (The Psychology)
+*List keywords related to Cognitive Load Reduction, Intent Alignment, Mental Model Mapping, or User Experience.*
+
+### 💰 Economic Dimension (The Value)
+*List keywords related to ROI, Frictionless Negotiation, Conversion Rate Optimization, or Compliance.*
+
+---
+**MISSING MATTER ANALYSIS**:
+Identify one critical "Contextual Vacuum" for each dimension. What high-value keyword is missing that should be there?
+${tuningContext}
+`;
+
+  // --- STANDARD PERSONAS ---
+  } else if (tone === 'prompt-engineering') {
+     prompt = `Transform this source text into an optimized prompt:\n\nSource Text:\n${text}\n${tuningContext}`;
+     systemInstruction = PROMPT_ENGINEERING_SYSTEM_PROMPT;
+     generationConfig = { responseMimeType: "application/json" };
+  
+  } else if (tone === 'code-expert') {
+    prompt = `You are a world-class software engineer. Refine, correct, and improve the given text/code.\nText: "${text}"\n${tuningContext}\n\nImproved Version:`;
+  } else if (tone === 'questioner') {
+    prompt = `Break down this text into essential questions and clear answers.\nText: "${text}"\n${tuningContext}\n\nQ&A Breakdown:`;
+  } else if (tone === 'notebooklm') {
+    prompt = `Transform this text into structured markdown suitable for NotebookLM.\nText: "${text}"\n${tuningContext}\n\nMarkdown Version:`;
+  } else if (tone === 'objective-critic') {
+    prompt = `Critique this idea. Use headings: Concept, Flaws, Technical Hurdles, Market Viability.\nIdea: "${text}"\n${tuningContext}\n\nObjective Critique:`;
+  } else if (tone === 'viral-creator') {
+    prompt = `Transform this into a high-engagement LinkedIn/Twitter post. Use hooks, white space, and emojis.\nInput: "${text}"\n${tuningContext}\n\nViral Post:`;
+  } else if (tone === 'analogy-master') {
+    prompt = `Explain this concept using a vivid real-world analogy (e.g., APIs = Waiters).\nConcept: "${text}"\n${tuningContext}\n\nAnalogy & Explanation:`;
+  } else {
+    // Fallback for simple tones
+    let toneDescription = tone;
+    if (tone === 'creative') toneDescription = 'creative, vivid, and engaging';
+    prompt = `Rephrase this text to be ${toneDescription}.\nText: "${text}"\n${tuningContext}\n\nRephrased text:`;
   }
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: modelName,
       contents: prompt,
+      config: {
+        ...generationConfig,
+        systemInstruction: systemInstruction,
+      },
     });
     return response.text.trim();
   } catch (error) {
     console.error("Gemini API Error:", error);
-    throw new Error("Failed to get a response from the AI. Please try again later.");
+    throw new Error("Failed to process request. The neural link was interrupted.");
   }
 }

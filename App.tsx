@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect, useCallback, FC, useRef, useLayoutEffect } from 'react';
-import { Persona } from './types';
 import { PERSONAS } from './constants';
-import { rephraseText } from './services/geminiService';
+import { rephraseText, TuningParams } from './services/geminiService';
 
 // --- Icon Components ---
 const SparklesIcon: FC<{ className?: string }> = ({ className }) => (
@@ -20,31 +19,83 @@ const CheckIcon: FC<{ className?: string }> = ({ className }) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
   </svg>
 );
+const BrainIcon: FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className || "w-5 h-5"}>
+    <path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z" />
+  </svg>
+);
+const AdjustmentsIcon: FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-5 h-5"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 13.5V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5m12-3V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5m-6-9V3.75m0 3.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 9.75V10.5" />
+  </svg>
+);
 
 // --- UI Components ---
 interface PersonaSelectorProps {
   selectedPersona: string;
-  onSelect: (personaId: string) => void;
+  onExecute: (personaId: string) => void;
+  isLoading: boolean;
 }
-const PersonaSelector: FC<PersonaSelectorProps> = ({ selectedPersona, onSelect }) => (
-  <div className="flex flex-wrap gap-2">
-    {PERSONAS.map((persona) => (
-      <button
-        key={persona.id}
-        onClick={() => onSelect(persona.id)}
-        className={`px-3 py-1.5 text-sm font-medium rounded-full flex items-center transition-all duration-200 ${
-          selectedPersona === persona.id
-            ? 'bg-indigo-600 text-white'
-            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-        }`}
-      >
-        <span className="mr-1.5">{persona.emoji}</span>
-        {persona.name}
-      </button>
-    ))}
+const PersonaSelector: FC<PersonaSelectorProps> = ({ selectedPersona, onExecute, isLoading }) => {
+  const highValueIds = ['executive-brief', 'legal-shield', 'legacy-refactor', 'medical-claim', 'semantic-dna'];
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {PERSONAS.map((persona) => {
+        const isHighValue = highValueIds.includes(persona.id);
+        const isSelected = selectedPersona === persona.id;
+        
+        return (
+          <button
+            key={persona.id}
+            onClick={() => onExecute(persona.id)}
+            disabled={isLoading}
+            className={`px-3 py-1.5 text-sm font-medium rounded-full flex items-center transition-all duration-200 border disabled:opacity-50 disabled:cursor-not-allowed ${
+              isSelected
+                ? isHighValue 
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white border-orange-500 shadow-lg shadow-orange-500/30'
+                  : 'bg-indigo-600 text-white border-indigo-500'
+                : isHighValue
+                  ? 'bg-slate-800 text-amber-400 border-amber-900/50 hover:bg-slate-700 hover:border-amber-700 hover:scale-105 active:scale-95'
+                  : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:border-slate-600 hover:scale-105 active:scale-95'
+            }`}
+          >
+            <span className="mr-1.5">{persona.emoji}</span>
+            {persona.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+interface TuningSliderProps {
+  label: string;
+  value: number;
+  onChange: (val: number) => void;
+  leftLabel: string;
+  rightLabel: string;
+}
+const TuningSlider: FC<TuningSliderProps> = ({ label, value, onChange, leftLabel, rightLabel }) => (
+  <div className="w-full">
+    <div className="flex justify-between items-center mb-1">
+      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</label>
+      <span className="text-xs font-mono text-indigo-400">{value}%</span>
+    </div>
+    <input
+      type="range"
+      min="0"
+      max="100"
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400"
+    />
+    <div className="flex justify-between items-center mt-1 text-[10px] text-slate-600">
+      <span>{leftLabel}</span>
+      <span>{rightLabel}</span>
+    </div>
   </div>
 );
-
 
 // --- Main App Component ---
 export default function App() {
@@ -54,36 +105,40 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<boolean>(false);
+  const [showTuner, setShowTuner] = useState<boolean>(false);
+  const [tuning, setTuning] = useState<TuningParams>({ granularity: 50, risk: 50, assertiveness: 50 });
+
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useLayoutEffect(() => {
     const textarea = inputRef.current;
     if (textarea) {
-      // Reset height to allow shrinking
       textarea.style.height = 'auto';
-      // Set height to scrollHeight to fit content
       textarea.style.height = `${textarea.scrollHeight}px`;
     }
   }, [inputText]);
   
-  const handleRephrase = useCallback(async () => {
+  const handleRephrase = useCallback(async (personaId: string) => {
+    setSelectedPersona(personaId);
+
     if (!inputText.trim()) {
-      setError('Please enter some text to rephrase.');
+      setError('Input payload empty. Initiate data stream.');
       return;
     }
+    
     setIsLoading(true);
     setError(null);
     setResultText('');
 
     try {
-      const rephrased = await rephraseText(inputText, selectedPersona);
+      const rephrased = await rephraseText(inputText, personaId, tuning);
       setResultText(rephrased);
     } catch (err: any) {
-      setError(err.message || 'An unknown error occurred.');
+      setError(err.message || 'Neural link interrupted.');
     } finally {
       setIsLoading(false);
     }
-  }, [inputText, selectedPersona]);
+  }, [inputText, tuning]);
 
   const handleCopy = () => {
     if (!resultText) return;
@@ -93,114 +148,172 @@ export default function App() {
   };
 
   const selectedPersonaDetails = PERSONAS.find(p => p.id === selectedPersona);
+  const isThinkingAgent = ['executive-brief', 'legal-shield', 'legacy-refactor', 'medical-claim', 'semantic-dna'].includes(selectedPersona);
 
   return (
-    <div className="min-h-screen text-slate-200 antialiased relative">
+    <div className="min-h-screen bg-slate-950 text-slate-200 antialiased relative selection:bg-indigo-500/30">
+      {/* Background Gradient Orb */}
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-96 bg-indigo-600/10 blur-[120px] rounded-full pointer-events-none -z-10"></div>
+
       <main className="container mx-auto px-4 py-8 sm:py-16">
-        <header className="text-center mb-12">
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-white">EchoWrite <span className="text-indigo-400">AI</span></h1>
-            <p className="mt-3 text-lg text-slate-400 max-w-2xl mx-auto">Transform your text with the perfect tone, powered by Gemini.</p>
+        <header className="text-center mb-10">
+            <div className="inline-flex items-center justify-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 mb-4">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-xs font-medium text-slate-400 tracking-wide uppercase">System Operational</span>
+            </div>
+            <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight mb-2">
+              NEXUS <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 font-light">PRIME</span>
+            </h1>
+            <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">
+              Cognitive Transmutation Engine. Transform raw data into <span className="text-indigo-300">strategic intelligence</span> using Reasoning Agents.
+            </p>
         </header>
         
-        <div className="max-w-5xl mx-auto bg-slate-800/50 backdrop-blur-xl border border-slate-700 rounded-2xl shadow-2xl shadow-black/20 overflow-hidden">
-            <div className="p-6 border-b border-slate-700">
-                <h3 className="text-lg font-semibold text-white mb-4">Select a Persona</h3>
-                <PersonaSelector selectedPersona={selectedPersona} onSelect={setSelectedPersona} />
-                {selectedPersona === 'notebooklm' && (
-                  <div className="mt-4 p-3 bg-slate-700/50 border border-slate-600 rounded-lg text-center">
-                    <p className="text-sm text-slate-300">
-                        Perfect for your notes! Take this Markdown to{' '}
-                        <a 
-                            href="https://notebooklm.google.com" 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="font-semibold text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition"
-                        >
-                            Google NotebookLM &rarr;
-                        </a>
-                    </p>
+        <div className="max-w-6xl mx-auto bg-slate-900/80 backdrop-blur-2xl border border-slate-800 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden ring-1 ring-white/5">
+            <div className="p-6 border-b border-slate-800 bg-slate-900/50">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                    Select Protocol & Execute
+                  </h3>
+                  <div className="flex gap-2 items-center">
+                    {isThinkingAgent && (
+                      <div className="flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-xs text-amber-300">
+                        <BrainIcon className="w-3 h-3" />
+                        <span>Deep Reasoning</span>
+                      </div>
+                    )}
+                    <button 
+                      onClick={() => setShowTuner(!showTuner)}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-all ${showTuner ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'}`}
+                    >
+                      <AdjustmentsIcon className="w-3 h-3" />
+                      Tune Reality
+                    </button>
                   </div>
-                )}
+                </div>
+                
+                <div className="flex flex-col md:flex-row gap-6">
+                  <div className="flex-grow">
+                     <PersonaSelector selectedPersona={selectedPersona} onExecute={handleRephrase} isLoading={isLoading} />
+                  </div>
+                  
+                  {showTuner && (
+                    <div className="md:w-64 flex-shrink-0 p-4 bg-slate-950/50 rounded-xl border border-slate-800/50 animate-in slide-in-from-top-2 fade-in duration-200">
+                      <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-3">Reality Tuning Levers</h4>
+                      <div className="space-y-4">
+                        <TuningSlider 
+                          label="Granularity" 
+                          value={tuning.granularity} 
+                          onChange={(v) => setTuning(p => ({...p, granularity: v}))} 
+                          leftLabel="Simple" 
+                          rightLabel="Technical"
+                        />
+                        <TuningSlider 
+                          label="Risk Tolerance" 
+                          value={tuning.risk} 
+                          onChange={(v) => setTuning(p => ({...p, risk: v}))} 
+                          leftLabel="Safe" 
+                          rightLabel="Gamble"
+                        />
+                         <TuningSlider 
+                          label="Assertiveness" 
+                          value={tuning.assertiveness} 
+                          onChange={(v) => setTuning(p => ({...p, assertiveness: v}))} 
+                          leftLabel="Passive" 
+                          rightLabel="Dominant"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {error && <p className="mt-4 text-red-400 text-xs font-mono bg-red-950/30 px-3 py-1 rounded border border-red-900/50 text-center sm:text-left">{error}</p>}
             </div>
 
-            <div className="grid md:grid-cols-2">
+            <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-800">
                 {/* Input Column */}
-                <div className="p-6">
-                    <div className="flex justify-between items-center mb-2">
-                        <label htmlFor="inputText" className="font-semibold text-white">Your Text</label>
-                        <span className="text-xs text-slate-400">{inputText.length} / 5000</span>
+                <div className="p-6 flex flex-col h-full">
+                    <div className="flex justify-between items-center mb-3">
+                        <label htmlFor="inputText" className="font-semibold text-white flex items-center gap-2">
+                          Input Data
+                        </label>
+                        <span className="text-xs font-mono text-slate-500">{inputText.length} chars</span>
                     </div>
                     <textarea
                         id="inputText"
                         ref={inputRef}
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
-                        placeholder="Start typing or paste your text here..."
-                        maxLength={5000}
-                        className="w-full min-h-[192px] sm:min-h-[256px] bg-slate-900 border border-slate-700 rounded-lg p-4 resize-none focus:ring-2 focus:ring-indigo-500 focus:outline-none transition text-slate-300 overscroll-y-contain overflow-y-auto"
-                        style={{ maxHeight: '70vh' }}
+                        placeholder={isThinkingAgent ? "Paste complex documentation, legal contracts, or legacy code here..." : "Enter text to process..."}
+                        maxLength={15000}
+                        className="w-full min-h-[300px] bg-slate-950 border border-slate-800 rounded-lg p-4 resize-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none transition text-slate-300 font-mono text-sm leading-relaxed placeholder:text-slate-700"
                     />
                 </div>
                 {/* Output Column */}
-                <div className="p-6 bg-slate-900/50 flex flex-col">
-                    <div className="flex justify-between items-center mb-2">
-                        <label className="font-semibold text-white">Rephrased Text</label>
-                        <span className="text-xs text-slate-400">{resultText.length}</span>
+                <div className="p-6 bg-slate-950/30 flex flex-col h-full">
+                    <div className="flex justify-between items-center mb-3">
+                        <label className="font-semibold text-white flex items-center gap-2">
+                          Intelligence Output
+                          {resultText && <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] rounded uppercase tracking-wide">Generated</span>}
+                        </label>
+                        <div className="flex gap-2">
+                           {resultText && !isLoading && (
+                              <button onClick={handleCopy} className="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-white transition" title="Copy to Clipboard">
+                                  {copyStatus ? <CheckIcon className="w-4 h-4 text-emerald-400"/> : <ClipboardIcon className="w-4 h-4"/>}
+                              </button>
+                          )}
+                        </div>
                     </div>
-                     <div className="relative w-full min-h-[192px] sm:min-h-[256px] flex-grow bg-slate-800 border border-slate-700 rounded-lg p-4 overflow-y-auto">
+                     <div className="relative w-full min-h-[300px] flex-grow bg-slate-900 border border-slate-800 rounded-lg p-4 overflow-y-auto">
                         {isLoading ? (
-                             <div className="flex items-center justify-center h-full text-slate-400">
-                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Rephrasing...
+                             <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-4">
+                                <div className="relative">
+                                  <div className="absolute inset-0 bg-indigo-500 blur-xl opacity-20 animate-pulse"></div>
+                                  <svg className="animate-spin relative z-10 h-8 w-8 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                </div>
+                                <span className="text-sm font-mono animate-pulse">
+                                  {isThinkingAgent ? "Reasoning Matrix Active..." : "Processing..."}
+                                </span>
                             </div>
                         ) : resultText ? (
-                            selectedPersona === 'prompt-engineering' ? (
-                                <pre className="text-sm text-slate-300 whitespace-pre-wrap font-mono bg-slate-900/50 p-3 rounded-md">
-                                    {(() => {
-                                        try {
-                                            const jsonObject = JSON.parse(resultText);
-                                            return JSON.stringify(jsonObject, null, 2);
-                                        } catch (e) {
-                                            return resultText; // Fallback if not valid JSON
-                                        }
-                                    })()}
-                                </pre>
-                            ) : (
-                                <p className="text-slate-300 whitespace-pre-wrap">{resultText}</p>
-                            )
-                        ) : (
-                             <div className="flex items-center justify-center h-full text-slate-500">
-                                Your rephrased text will appear here.
+                            <div className="prose prose-invert prose-sm max-w-none">
+                                {selectedPersona === 'prompt-engineering' ? (
+                                    <pre className="text-xs font-mono bg-black/30 p-4 rounded-lg border border-slate-800 overflow-x-auto">
+                                        {(() => {
+                                            try {
+                                                const jsonObject = JSON.parse(resultText);
+                                                return JSON.stringify(jsonObject, null, 2);
+                                            } catch (e) {
+                                                return resultText;
+                                            }
+                                        })()}
+                                    </pre>
+                                ) : (
+                                    <div className="whitespace-pre-wrap font-mono text-sm text-slate-300 leading-relaxed">
+                                      {resultText}
+                                    </div>
+                                )}
                             </div>
-                        )}
-                        {resultText && !isLoading && (
-                            <button onClick={handleCopy} className="absolute top-2 right-2 p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-white transition">
-                                {copyStatus ? <CheckIcon className="w-5 h-5 text-green-400"/> : <ClipboardIcon className="w-5 h-5"/>}
-                            </button>
+                        ) : (
+                             <div className="flex flex-col items-center justify-center h-full text-slate-600 gap-2">
+                                <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
+                                  <SparklesIcon className="w-5 h-5 opacity-50" />
+                                </div>
+                                <span className="text-sm">Select a protocol to execute</span>
+                            </div>
                         )}
                     </div>
                 </div>
-            </div>
-
-            <div className="p-6 bg-slate-800 border-t border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-4">
-                <div className="w-full sm:w-auto">
-                    {error && <p className="text-red-400 text-sm text-center sm:text-left">{error}</p>}
-                </div>
-                <button 
-                    onClick={handleRephrase} 
-                    disabled={isLoading || !inputText}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 text-white font-bold px-6 py-3 rounded-lg hover:bg-indigo-500 disabled:bg-slate-600 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105"
-                >
-                    <SparklesIcon className="w-5 h-5" />
-                    <span>{isLoading ? 'Rephrasing...' : `Rephrase as ${selectedPersonaDetails?.name}`}</span>
-                </button>
             </div>
         </div>
         <footer className="text-center mt-12">
-            <p className="text-slate-500 text-sm">Powered by Google Gemini. Made with ❤️.</p>
+            <p className="text-slate-600 text-xs font-mono uppercase tracking-widest">Nexus Prime // System Version 2.5.0</p>
         </footer>
       </main>
     </div>
