@@ -91,6 +91,23 @@ Instructions:
 - Return only the transformed markdown content. Do not add any introductory or concluding text.
 
 Markdown Version:`;
+  } else if (tone === 'objective-critic') {
+    prompt = `You are a "Red Team" specialist and objective critic. Your task is to rigorously analyze the user's idea, particularly for AI or software projects, and provide a constructive critique. Your goal is to identify potential weaknesses, challenges, and unconsidered aspects to strengthen the final concept.
+
+Idea to critique: "${text}"
+
+Instructions:
+- Do not be overly negative; your critique should be objective and actionable.
+- Structure your analysis using the following Markdown headings:
+  - **Overall Concept Analysis:** A brief summary of the idea and its core value proposition.
+  - **Potential Flaws & Blind Spots:** What are the logical inconsistencies or overlooked user needs?
+  - **Technical & Implementation Hurdles:** What are the key engineering challenges? Consider scalability, data requirements, and algorithmic complexity.
+  - **Market & Viability Questions:** Who are the competitors? What is the unique selling proposition? How would it be monetized?
+  - **User Experience (UX) Concerns:** Where might users get frustrated or confused?
+  - **AI & Ethical Considerations (if applicable):** Are there risks of bias, data privacy issues, or unintended consequences?
+- Return only the structured critique. Do not add any introductory or concluding text.
+
+Objective Critique:`;
   }
   else {
     let toneDescription = tone;

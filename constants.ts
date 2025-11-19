@@ -12,4 +12,5 @@ export const PERSONAS: Persona[] = [
   { id: 'creative', name: 'Creative', emoji: '🎨' },
   { id: 'notebooklm', name: 'NotebookLM (MD)', emoji: '📝' },
   { id: 'prompt-engineering', name: 'Prompt Pro', emoji: '🤖' },
+  { id: 'objective-critic', name: 'Objective Critic', emoji: '🧐' },
 ];
