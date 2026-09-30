@@ -8,6 +8,11 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        proxy: {
+          '/llm': { target: 'http://127.0.0.1:8081', changeOrigin: true, rewrite: (p) => p.replace(/^\/llm/, '') },
+          // Anthropic blocks direct browser calls (CORS); the dev server forwards them. The key stays in the browser and is sent per request.
+          '/claude': { target: process.env.CLAUDE_UPSTREAM || 'https://api.anthropic.com', changeOrigin: true, rewrite: (p) => p.replace(/^\/claude/, '') },
+        },
       },
       plugins: [react()],
       define: {

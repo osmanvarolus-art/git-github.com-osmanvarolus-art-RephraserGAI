@@ -1,7 +1,12 @@
 
-import React, { useState, useEffect, useCallback, FC, useRef, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, FC, useRef, useLayoutEffect } from 'react';
 import { PERSONAS } from './constants';
 import { rephraseText, TuningParams } from './services/geminiService';
+import { ModelSettings, ModesManager, DiffView, ClusterView } from './components/Panels';
+import { InputHighlight } from './components/InputHighlight';
+import { parseCompressed } from './lib/compressor';
+import { CustomMode, loadCustomModes, saveCustomModes } from './lib/customModes';
+import { loadLlmConfig, modelLabel } from './lib/llmConfig';
 
 // --- Icon Components ---
 const SparklesIcon: FC<{ className?: string }> = ({ className }) => (
@@ -36,12 +41,12 @@ interface PersonaSelectorProps {
   onExecute: (personaId: string) => void;
   isLoading: boolean;
 }
-const PersonaSelector: FC<PersonaSelectorProps> = ({ selectedPersona, onExecute, isLoading }) => {
+const PersonaSelector: FC<PersonaSelectorProps & { extra?: CustomMode[] }> = ({ selectedPersona, onExecute, isLoading, extra = [] }) => {
   const highValueIds = ['executive-brief', 'legal-shield', 'legacy-refactor', 'medical-claim', 'semantic-dna', 'brainstorming'];
 
   return (
     <div className="flex flex-wrap gap-2">
-      {PERSONAS.map((persona) => {
+      {[...PERSONAS, ...extra].map((persona) => {
         const isHighValue = highValueIds.includes(persona.id);
         const isSelected = selectedPersona === persona.id;
         
@@ -107,6 +112,14 @@ export default function App() {
   const [copyStatus, setCopyStatus] = useState<boolean>(false);
   const [showTuner, setShowTuner] = useState<boolean>(false);
   const [tuning, setTuning] = useState<TuningParams>({ granularity: 50, risk: 50, assertiveness: 50 });
+  const [customModes, setCustomModes] = useState<CustomMode[]>(() => loadCustomModes(localStorage));
+  const [panel, setPanel] = useState<'' | 'model' | 'modes'>('');
+  const [showDiff, setShowDiff] = useState<boolean>(false);
+  const [runInfo, setRunInfo] = useState<{ model: string; secs: number } | null>(null);
+  const [resultSource, setResultSource] = useState<string>(''); // the exact text the result was computed from
+  const [activeCluster, setActiveCluster] = useState<number | null>(null); // hovered cluster, shared by input, cards and chips
+
+  const updateModes = (m: CustomMode[]) => { setCustomModes(m); saveCustomModes(localStorage, m); };
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -129,10 +142,15 @@ export default function App() {
     setIsLoading(true);
     setError(null);
     setResultText('');
+    setResultSource(inputText);
+    setActiveCluster(null);
 
     try {
+      const label = modelLabel(loadLlmConfig(localStorage));
+      const t0 = Date.now();
       const rephrased = await rephraseText(inputText, personaId, tuning);
       setResultText(rephrased);
+      setRunInfo({ model: label, secs: (Date.now() - t0) / 1000 });
     } catch (err: any) {
       setError(err.message || 'Neural link interrupted.');
     } finally {
@@ -148,6 +166,13 @@ export default function App() {
   };
 
   const selectedPersonaDetails = PERSONAS.find(p => p.id === selectedPersona);
+
+  // Cluster colors are only valid for the exact text they were computed from; editing the input clears them.
+  const compressed = useMemo(() => {
+    if (selectedPersona !== 'knowledge-compressor' || !resultText || isLoading) return null;
+    try { return parseCompressed(resultText, resultSource); } catch { return null; }
+  }, [selectedPersona, resultText, resultSource, isLoading]);
+  const showInputHighlight = !!compressed && inputText === resultSource;
   const isThinkingAgent = ['executive-brief', 'legal-shield', 'legacy-refactor', 'medical-claim', 'semantic-dna', 'brainstorming'].includes(selectedPersona);
 
   return (
@@ -186,6 +211,18 @@ export default function App() {
                       </div>
                     )}
                     <button 
+                      onClick={() => setPanel(panel === 'modes' ? '' : 'modes')}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${panel === 'modes' ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'}`}
+                    >
+                      My Modes
+                    </button>
+                    <button 
+                      onClick={() => setPanel(panel === 'model' ? '' : 'model')}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${panel === 'model' ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'}`}
+                    >
+                      Model
+                    </button>
+                    <button 
                       onClick={() => setShowTuner(!showTuner)}
                       className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-all ${showTuner ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'}`}
                     >
@@ -197,7 +234,9 @@ export default function App() {
                 
                 <div className="flex flex-col md:flex-row gap-6">
                   <div className="flex-grow">
-                     <PersonaSelector selectedPersona={selectedPersona} onExecute={handleRephrase} isLoading={isLoading} />
+                     <PersonaSelector selectedPersona={selectedPersona} onExecute={handleRephrase} isLoading={isLoading} extra={customModes} />
+                     {panel === 'model' && <ModelSettings onSaved={() => setError(null)} />}
+                     {panel === 'modes' && <ModesManager modes={customModes} onChange={updateModes} />}
                   </div>
                   
                   {showTuner && (
@@ -242,15 +281,25 @@ export default function App() {
                         </label>
                         <span className="text-xs font-mono text-slate-500">{inputText.length} chars</span>
                     </div>
-                    <textarea
-                        id="inputText"
-                        ref={inputRef}
-                        value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
-                        placeholder={isThinkingAgent ? "Paste complex documentation, legal contracts, or legacy code here..." : "Enter text to process..."}
-                        maxLength={15000}
-                        className="w-full min-h-[300px] bg-slate-950 border border-slate-800 rounded-lg p-4 resize-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none transition text-slate-300 font-mono text-sm leading-relaxed placeholder:text-slate-700"
-                    />
+                    <div className="relative rounded-lg bg-slate-950">
+                        {showInputHighlight && compressed && (
+                            <InputHighlight text={resultSource} clusters={compressed.clusters} active={activeCluster} />
+                        )}
+                        <textarea
+                            id="inputText"
+                            ref={inputRef}
+                            value={inputText}
+                            onChange={(e) => setInputText(e.target.value)}
+                            placeholder={isThinkingAgent ? "Paste complex documentation, legal contracts, or legacy code here..." : "Enter text to process..."}
+                            maxLength={15000}
+                            className="relative w-full min-h-[300px] bg-transparent border border-slate-800 rounded-lg p-4 resize-none overflow-y-hidden focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none transition text-slate-300 font-mono text-sm leading-relaxed placeholder:text-slate-700"
+                        />
+                    </div>
+                    {showInputHighlight && (
+                        <p data-testid="input-highlight-hint" className="mt-2 text-[10px] font-mono text-slate-500">
+                            Colored = mapped to a cluster · uncolored = left out · edit the text to clear the colors
+                        </p>
+                    )}
                 </div>
                 {/* Output Column */}
                 <div className="p-6 bg-slate-950/30 flex flex-col h-full">
@@ -258,8 +307,14 @@ export default function App() {
                         <label className="font-semibold text-white flex items-center gap-2">
                           Intelligence Output
                           {resultText && <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] rounded uppercase tracking-wide">Generated</span>}
+                          {resultText && runInfo && <span data-testid="run-info" className="text-[10px] font-mono text-slate-500">{runInfo.model} · {runInfo.secs.toFixed(1)}s</span>}
                         </label>
                         <div className="flex gap-2">
+                           {resultText && !isLoading && selectedPersona !== 'prompt-engineering' && selectedPersona !== 'knowledge-compressor' && (
+                              <button onClick={() => setShowDiff(!showDiff)} data-testid="diff-toggle" className={`px-2 py-1 rounded-md text-xs border ${showDiff ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300' : 'border-slate-700 text-slate-400 hover:text-white'}`}>
+                                  Diff
+                              </button>
+                           )}
                            {resultText && !isLoading && (
                               <button onClick={handleCopy} className="p-1.5 rounded-md hover:bg-slate-800 text-slate-400 hover:text-white transition" title="Copy to Clipboard">
                                   {copyStatus ? <CheckIcon className="w-4 h-4 text-emerald-400"/> : <ClipboardIcon className="w-4 h-4"/>}
@@ -294,6 +349,10 @@ export default function App() {
                                             }
                                         })()}
                                     </pre>
+                                ) : selectedPersona === 'knowledge-compressor' ? (
+                                    <ClusterView raw={resultText} source={resultSource} active={activeCluster} onActive={setActiveCluster} />
+                                ) : showDiff ? (
+                                    <DiffView before={inputText} after={resultText} />
                                 ) : (
                                     <div className="whitespace-pre-wrap font-mono text-sm text-slate-300 leading-relaxed">
                                       {resultText}

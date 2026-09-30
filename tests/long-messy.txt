@@ -1,0 +1,39 @@
+notlar - karisik, sirasiz (29 eylul gecesi)
+
+bugun telegram botunu bagladik, token .env e yazildi, allowed users sadece benim id. bunu unutma!! ayrica jermes adini verdik jailed hermes e, dock ta hala Hermes yaziyor olabilir cunku pencere basligi electron dan geliyor.
+
+--- north star fikirleri ---
+* 24/7 radar: twitter, reddit, arxiv, github trending. %99 gurultu, %1 gercek. uyurken calissin, 10 dakikalik POC denesin, obsidian a karar karti birakssin
+* ajanlar birbiriyle konussun, ben kurye olmayayim (claude, codex, hermes, gemini, pi)
+* "done" demek icin SHA-256 makbuz sart. claim_linter, writeset_guard, context_inject, mailbox_guard hooklari
+* ben sadece iki sey onaylarim: PARA harcamak ve YAYINLAMAK. gerisi ajanlarin isi
+* ns-crunch: 155.000 satirlik workspace ciktisini tek satir JSON e sikistirir, digest ile geri getirilebilir
+
+random dusunce: restoran benzetmesi cok iyi calisti, analogy master modunda. ama benzetme bazen girdiyi bozuyor mu? kontrol et.
+
+## rephraser projesi
+- vite + react, gemini yerine bonsai-27b (llama-server :8081)
+- thinking kapali olunca derin modlar 2-8 dk yerine 40-50 sn
+- legal-shield ve medical-claim simdilik kapali, 500 veriyordu
+- diff gorunumu, ozel modlar, model paneli eklendi
+- TODO: claude alt modelleri (opus/sonnet/haiku) listeden secilsin, yazmadan
+- TODO: gercek claude anahtari ile dene, su an sadece sahte sunucu var
+
+```python
+def brute(n):
+    # while-else hatasi: else: return 0 tahtayi dolu sanmiyor
+    ...
+```
+3xN domino: f(2)=3, f(4)=11, f(6)=41, f(8)=153, f(10)=571, f(30)=299303201. tek N icin 0.
+
+--- yemek / alisveris (alakasiz) ---
+yarin: yumurta, zeytin, peynir, ekmek, cay. cumartesi kahvalti icin misafir gelecek, 4 kisi. balkonda cicekleri sula. fatura son gun 3 ekim, elektrik 1.240 TL geldi, cok yuksek, sayaca bak.
+
+--- jev / dogrulama ---
+jev typed-verdict evaluator. rephraser icinde kullanilmadi, sadece ben kodu degistirdim. jev'i baglamak istersem her cikti icin "girdiye sadik mi" hukmu uretir. 17 mod OK testi sadece "cevap geldi mi" diye bakti, kaliteyi olcmedi. bu dogru bir elestiri.
+
+sonra bir sey daha: onay istemleri bana ulasmiyor, komutlar bloklaniyor. "Hermes uygulamasini guncelle" diyor. tekrar deneme, baska yoldan da deneme. ekran goruntusu cok genis, birden fazla monitor, koordinatlar kayiyor -> pencere adresini hyprctl den al, grim -g ile sadece o pencereyi cek.
+
+sinav / is: cuma 14:00 toplanti, sunum 12 slayt, 3. slaytta rakamlar yanlis (revenue -12% degil -21%). churn 4.1 -> 5.8. iki enterprise musteri yenilemeyi gelecek ceyregea erteledi. bunu C-suite brief olarak yazmam lazim ama once rakamlari dogrula.
+
+tekrar: telegram token .env de, asla chate yazma. anahtarlari ben yazmam, sen panele yapistir. 😀 bitti sanirim... hayir bitmedi, commit yok, selftest.html gereksiz kaldi, temizle.

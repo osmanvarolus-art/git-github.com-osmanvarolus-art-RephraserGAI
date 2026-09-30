@@ -1,5 +1,9 @@
 
 import { GoogleGenAI } from "@google/genai";
+import { loadLlmConfig } from "../lib/llmConfig";
+import { callLlm } from "../lib/llmClient";
+import { knowledgeCompressorSchema, buildCompressorPrompt, compressBest, COMPRESSOR_SYSTEM, SEMANTIC_DNA_TONE } from "../lib/compressor";
+import { loadCustomModes, applyPrompt } from "../lib/customModes";
 
 const PROMPT_ENGINEERING_SYSTEM_PROMPT = `You are a Meticulous Systems Architect operating inside the HybridAgentStack Shared Intelligence Framework.
 
@@ -32,7 +36,6 @@ export async function rephraseText(
   tone: string,
   tuning?: TuningParams
 ): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   // Default Config
   let modelName = 'gemini-2.5-flash';
@@ -56,8 +59,17 @@ Apply the following dimensional adjustments to the output tone and content:
 `;
   }
 
+  // --- 0. USER-DEFINED MODES (stored in the browser) ---
+  const custom = tone.startsWith('custom:')
+    ? loadCustomModes(typeof localStorage === 'undefined' ? undefined : localStorage).find(m => m.id === tone)
+    : undefined;
+  if (tone.startsWith('custom:') && !custom) throw new Error('Custom mode not found.');
+
+  if (custom) {
+    prompt = applyPrompt(custom.prompt, text) + tuningContext;
+
   // --- 1. THE EXECUTIVE BRIEF (Strategic Compression) ---
-  if (tone === 'executive-brief') {
+  } else if (tone === 'executive-brief') {
     generationConfig = {
         thinkingConfig: { thinkingBudget: 1024 },
         temperature: 0.7,
@@ -209,6 +221,14 @@ ${tuningContext}
     `;
 
   // --- STANDARD PERSONAS ---
+  } else if (tone === 'knowledge-compressor') {
+    // Structured output: clusters with colors and byte ranges pointing back into the source.
+    // Gemini path is not schema-enforced here (no key in this setup); local/Claude paths are.
+    // Semantic DNA persona with mirroring switched off; keywords are part of the enforced schema.
+    systemInstruction = COMPRESSOR_SYSTEM;
+    prompt = buildCompressorPrompt(text, SEMANTIC_DNA_TONE) + tuningContext;
+    generationConfig = { temperature: 0.3 };
+
   } else if (tone === 'prompt-engineering') {
      prompt = `Transform this source text into an optimized prompt:\n\nSource Text:\n${text}\n${tuningContext}`;
      systemInstruction = PROMPT_ENGINEERING_SYSTEM_PROMPT;
@@ -233,6 +253,24 @@ ${tuningContext}
     prompt = `Rephrase this text to be ${toneDescription}.\nText: "${text}"\n${tuningContext}\n\nRephrased text:`;
   }
 
+  // Claude or a local OpenAI-compatible model (bonsai) when chosen, or whenever no Gemini key exists.
+  const cfg = loadLlmConfig(typeof localStorage === 'undefined' ? undefined : localStorage);
+  if (cfg.provider === 'claude' || !process.env.GEMINI_API_KEY) {
+    const ask = () => callLlm(cfg, {
+      system: systemInstruction,
+      prompt,
+      temperature: generationConfig.temperature ?? 0.7,
+      json: tone === 'prompt-engineering',
+      schema: tone === 'knowledge-compressor'
+        ? { name: 'knowledge_compressor', description: 'Clustered compression of the source text', schema: knowledgeCompressorSchema }
+        : undefined,
+    });
+    // The model maps clusters to source ranges unreliably; keep the best of up to 3 tries.
+    if (tone === 'knowledge-compressor') return (await compressBest(text, ask)).raw;
+    return ask();
+  }
+
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: modelName,
