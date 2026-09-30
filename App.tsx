@@ -180,8 +180,8 @@ export default function App() {
       {/* Background Gradient Orb */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-96 bg-indigo-600/10 blur-[120px] rounded-full pointer-events-none -z-10"></div>
 
-      <main className="container mx-auto px-4 py-8 sm:py-16">
-        <header className="text-center mb-10">
+      <main className="w-full px-4 py-4">
+        <header className="text-center mb-4">
             <div className="inline-flex items-center justify-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 mb-4">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -189,15 +189,15 @@ export default function App() {
                 </span>
                 <span className="text-xs font-medium text-slate-400 tracking-wide uppercase">System Operational</span>
             </div>
-            <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight mb-2">
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-1">
               NEXUS <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 font-light">PRIME</span>
             </h1>
-            <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">
+            <p className="hidden">
               Cognitive Transmutation Engine. Transform raw data into <span className="text-indigo-300">strategic intelligence</span> using Reasoning Agents.
             </p>
         </header>
         
-        <div className="max-w-6xl mx-auto bg-slate-900/80 backdrop-blur-2xl border border-slate-800 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden ring-1 ring-white/5">
+        <div className="w-full bg-slate-900/80 backdrop-blur-2xl border border-slate-800 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden ring-1 ring-white/5">
             <div className="p-6 border-b border-slate-800 bg-slate-900/50">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
