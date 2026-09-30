@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# agent tool droppings
+.claude-flow/
+.swarm/
+ruvector.db
