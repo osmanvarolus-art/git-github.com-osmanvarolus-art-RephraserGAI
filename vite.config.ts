@@ -1,6 +1,26 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { execFile } from 'node:child_process';
+import os from 'node:os';
+
+// Envoy feed: the North Star log stream as plain lines, from the existing ns_feed.py (no new service).
+const envoyFeed = () => ({
+  name: 'envoy-feed',
+  configureServer(server: any) {
+    server.middlewares.use('/api/envoy/feed', (req: any, res: any) => {
+      const minutes = Math.min(240, Math.max(5, Number(new URL(req.url, 'http://x').searchParams.get('minutes')) || 30));
+      execFile('python3', ['-B', `${os.homedir()}/Projects/ns-ratchet/tools/ns_feed.py`, '--minutes', String(minutes)],
+        { timeout: 20000, maxBuffer: 8_000_000 }, (err, out) => {
+          res.setHeader('content-type', 'application/json');
+          if (err) { res.statusCode = 502; res.end(JSON.stringify({ error: 'feed failed' })); return; }
+          try { res.end(JSON.stringify({ text: JSON.parse(out).sentences.map((x: any) => x.text).join('\n') })); }
+          catch { res.statusCode = 502; res.end(JSON.stringify({ error: 'feed not JSON' })); }
+        });
+    });
+  },
+});
+
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
@@ -14,7 +34,7 @@ export default defineConfig(({ mode }) => {
           '/claude': { target: process.env.CLAUDE_UPSTREAM || 'https://api.anthropic.com', changeOrigin: true, rewrite: (p) => p.replace(/^\/claude/, '') },
         },
       },
-      plugins: [react()],
+      plugins: [react(), envoyFeed()],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)

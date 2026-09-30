@@ -221,6 +221,16 @@ ${tuningContext}
     `;
 
   // --- STANDARD PERSONAS ---
+  } else if (tone === 'envoy-5' || tone === 'envoy-10') {
+    const five = tone === 'envoy-5';
+    generationConfig = { temperature: 0.3 };
+    systemInstruction = `You are the owner's envoy. The owner is a vibe coder who cannot follow what software agents write. You read the agent log below and tell him, in Turkish, what is happening now and what got done. You know his goal: a factory of agents that repairs itself and delivers what he asks for, with product requests first.`;
+    prompt = `Retell this agent log for a ${five ? '5-year-old: everyday analogies (a workshop, a queue, a teacher checking homework), no numbers, short sentences' : '10-year-old: plain words, numbers and cause-and-effect allowed'}.
+Rules: Turkish only. Keep technical names (goal ids, file names) in [square brackets]. Never quote raw log lines. Two short sections: "Şu an oluyor" and "Bitti". Say only what the log supports; if something is unclear write "belirsiz". Do not invent.
+
+LOG:
+${text}${tuningContext}`;
+
   } else if (tone === 'knowledge-compressor') {
     // Structured output: clusters with colors and byte ranges pointing back into the source.
     // Gemini path is not schema-enforced here (no key in this setup); local/Claude paths are.

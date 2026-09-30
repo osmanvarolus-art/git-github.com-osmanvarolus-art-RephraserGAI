@@ -281,6 +281,16 @@ export default function App() {
                         </label>
                         <span className="text-xs font-mono text-slate-500">{inputText.length} chars</span>
                     </div>
+                    <div className="mb-2 flex items-center gap-2">
+                        <button type="button" data-testid="feed-load" onClick={async () => {
+                          try {
+                            const r = await fetch('/api/envoy/feed?minutes=30'); const j = await r.json();
+                            if (!r.ok || typeof j.text !== 'string') throw new Error(j.error || `Akış HTTP ${r.status}`);
+                            setInputText(j.text.slice(0, 15000)); setError(null);
+                          } catch (e: any) { setError(e.message || 'Akış alınamadı'); }
+                        }} className="px-2 py-1 rounded-md text-xs border border-slate-700 text-slate-400 hover:text-white">Akış: son 30 dk</button>
+                        <span className="text-xs text-slate-500">North Star günlüğünü yükler, sonra Elçi · 5 yaş / 10 yaş seç</span>
+                    </div>
                     <div className="relative rounded-lg bg-slate-950">
                         {showInputHighlight && compressed && (
                             <InputHighlight text={resultSource} clusters={compressed.clusters} active={activeCluster} />

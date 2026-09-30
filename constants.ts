@@ -2,6 +2,9 @@
 import { Persona } from './types';
 
 export const PERSONAS: Persona[] = [
+  // --- Envoy: retells the agent stream for the owner ---
+  { id: 'envoy-5', name: 'Elçi · 5 yaş', emoji: '🧒' },
+  { id: 'envoy-10', name: 'Elçi · 10 yaş', emoji: '🧑' },
   // --- The Game Changers (Blue Ocean) ---
   { id: 'executive-brief', name: 'C-Suite Brief (Strategy)', emoji: '📊' },
   // Disabled for now (local bonsai errors on these); re-enable by uncommenting.
