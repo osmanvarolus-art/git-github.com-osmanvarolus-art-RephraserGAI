@@ -178,11 +178,11 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 antialiased relative selection:bg-indigo-500/30">
       {/* Background Gradient Orb */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-96 bg-indigo-600/10 blur-[120px] rounded-full pointer-events-none -z-10"></div>
+      
 
       <main className="w-full px-4 py-4">
         <header className="text-center mb-4">
-            <div className="inline-flex items-center justify-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 mb-4">
+            <div className="hidden">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
