@@ -14,8 +14,19 @@ const envoyFeed = () => ({
         { timeout: 20000, maxBuffer: 8_000_000 }, (err, out) => {
           res.setHeader('content-type', 'application/json');
           if (err) { res.statusCode = 502; res.end(JSON.stringify({ error: 'feed failed' })); return; }
-          try { res.end(JSON.stringify({ text: JSON.parse(out).sentences.map((x: any) => x.text).join('\n') })); }
-          catch { res.statusCode = 502; res.end(JSON.stringify({ error: 'feed not JSON' })); }
+          let log = '';
+          try { log = JSON.parse(out).sentences.map((x: any) => x.text).join('\n'); }
+          catch { res.statusCode = 502; res.end(JSON.stringify({ error: 'feed not JSON' })); return; }
+          // Who is doing what right now, from herdr itself (agent kind, status, pane title), put first so the size cap never drops it.
+          execFile('herdr', ['pane', 'list'], { timeout: 8000 }, (e2, o2) => {
+            let agents = '';
+            try {
+              const panes = JSON.parse(o2).result.panes.filter((p: any) => p.agent);
+              agents = 'Ajanlar şu an (herdr):\n' + panes.map((p: any) =>
+                `[${p.pane_id}] ${p.agent} ${p.agent_status}${p.terminal_title_stripped ? ': ' + p.terminal_title_stripped.replace(/ \| omarchi-os$/, '') : ''}`).join('\n') + '\n\nGünlük:\n';
+            } catch { /* herdr unreachable: the log alone still works */ }
+            res.end(JSON.stringify({ text: agents + log }));
+          });
         });
     });
   },
