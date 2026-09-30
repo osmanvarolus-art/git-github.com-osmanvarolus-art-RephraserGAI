@@ -2,9 +2,6 @@
 import { Persona } from './types';
 
 export const PERSONAS: Persona[] = [
-  // --- Envoy: retells the agent stream for the owner ---
-  { id: 'envoy-5', name: 'Elçi · 5 yaş', emoji: '🧒' },
-  { id: 'envoy-10', name: 'Elçi · 10 yaş', emoji: '🧑' },
   // --- The Game Changers (Blue Ocean) ---
   { id: 'executive-brief', name: 'C-Suite Brief (Strategy)', emoji: '📊' },
   // Disabled for now (local bonsai errors on these); re-enable by uncommenting.
@@ -14,6 +11,7 @@ export const PERSONAS: Persona[] = [
   { id: 'semantic-dna', name: 'Semantic DNA (Keywords)', emoji: '🧬' },
   { id: 'brainstorming', name: 'Brainstorming (Workflow)', emoji: '⚡' },
   { id: 'knowledge-compressor', name: 'Knowledge Compressor (Clusters)', emoji: '🧩' },
+  { id: 'agent-activity', name: 'Agent Activity', emoji: '🧭' },
   
   // --- Standard Tier ---
   { id: 'viral-creator', name: 'Viral Creator', emoji: '🚀' },
