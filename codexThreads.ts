@@ -80,12 +80,12 @@ function itemText(item: any): string {
     : '';
 }
 
-function redactSensitive(text: string): string {
+export function redactSensitive(text: string): string {
   return text
     .replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, '[private key redacted]')
-    .replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/-]+=*/gi, '$1 [credential redacted]')
-    .replace(/\b((?:api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|password|passwd|authorization)["']?\s*:\s*)["'][^"']*["']/gi, '$1"[credential redacted]"')
-    .replace(/\b((?:api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|password|passwd|authorization)\s*[:=]\s*)["']?[^\s,'";}]+["']?/gi, '$1[credential redacted]')
+    .replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/-]{12,}=*/gi, '$1 [credential redacted]')
+    .replace(/(?<![A-Za-z0-9])((?:[A-Za-z0-9]+[_-])*(?:api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|token|secret|password|passwd|authorization)["']?\s*:\s*)["'][^"']*["']/gi, '$1"[credential redacted]"')
+    .replace(/(?<![A-Za-z0-9])((?:[A-Za-z0-9]+[_-])*(?:api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|token|secret|password|passwd|authorization)\s*[:=]\s*)["']?[^\s,'";}]+["']?/gi, '$1[credential redacted]')
     .replace(/\b(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9_]{12,}|xox[baprs]-[A-Za-z0-9-]{12,})\b/g, '[credential redacted]');
 }
 
@@ -141,9 +141,9 @@ async function readHerdrActivity() {
 async function readTail(file: string, limit = 8 * 1024 * 1024): Promise<string> {
   const info = await stat(file);
   if (info.size <= limit) return readFile(file, 'utf8');
-  const stream = createReadStream(file, { start: info.size - limit });
+  const stream = createReadStream(file, { start: info.size - limit, encoding: 'utf8' });
   let text = '';
-  for await (const chunk of stream) text += chunk.toString();
+  for await (const chunk of stream) text += chunk; // utf8 encoding keeps a multi-byte character that straddles a chunk boundary intact
   return text.slice(text.indexOf('\n') + 1);
 }
 

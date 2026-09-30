@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
     return {
       server: {
         port: 3000,
-        host: '0.0.0.0',
+        host: '127.0.0.1', // the /llm and /claude proxies must not be reachable from the LAN
         proxy: {
           '/llm': { target: localLlmProxyTarget, changeOrigin: true, rewrite: (p) => p.replace(/^\/llm/, '') },
           // Anthropic blocks direct browser calls (CORS); the dev server forwards them. The key stays in the browser and is sent per request.
