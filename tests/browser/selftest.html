@@ -1,0 +1,44 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>RephraserGAI canli test</title>
+<style>
+body{font:14px system-ui;background:#0b0f14;color:#dbe4ee;margin:16px}
+h1{font-size:18px} table{border-collapse:collapse;width:100%}
+td,th{border-bottom:1px solid #223;padding:6px 8px;text-align:left;vertical-align:top}
+.ok{color:#4ade80}.err{color:#f87171}.run{color:#fbbf24}.wait{color:#64748b}
+pre{margin:0;white-space:pre-wrap;max-width:780px;color:#9fb0c3}
+</style></head><body>
+<h1>RephraserGAI &rarr; bonsai-27b canli test <span id="sum"></span></h1>
+<table><thead><tr><th>Mod</th><th>Durum</th><th>Sure</th><th>Cikti (ilk 300 karakter)</th></tr></thead><tbody id="rows"></tbody></table>
+<script type="module">
+import { rephraseText } from '/services/geminiService.ts';
+const dflt='Our Q3 revenue dropped 12% because churn rose and two enterprise clients delayed renewals until next quarter.';
+const inputs={
+ 'legacy-refactor':'function add(a,b){ var r = a+b; return r }',
+ 'code-expert':'for i in range(10): print i',
+ 'medical-claim':'pt c/o chest pain 3 days, worse on exertion, EKG normal, ordered stress test',
+ 'legal-shield':'Vendor may terminate this agreement at any time for any reason without notice or liability.'};
+const tones=['professional','confident','friendly','casual','concise','creative','notebooklm','objective-critic','viral-creator','analogy-master','code-expert','questioner','prompt-engineering','executive-brief','legacy-refactor','semantic-dna','brainstorming'];
+const tuning={granularity:80,risk:20,assertiveness:60};
+const tb=document.getElementById('rows'), sum=document.getElementById('sum');
+const rows={};
+for(const t of tones){const tr=document.createElement('tr');tr.innerHTML=`<td>${t}</td><td class="wait">bekliyor</td><td></td><td><pre></pre></td>`;tb.appendChild(tr);rows[t]=tr;}
+let ok=0,err=0;
+async function run(t,i){
+  const tr=rows[t], st=tr.children[1]; st.textContent='calisiyor'; st.className='run';
+  const s=Date.now();
+  try{
+    const o=await rephraseText(inputs[t]||dflt,t,i%2?tuning:undefined);
+    if(!o) throw new Error('bos cikti');
+    st.textContent='OK'; st.className='ok'; ok++;
+    tr.children[3].firstChild.textContent=o.slice(0,300);
+  }catch(e){
+    st.textContent='HATA'; st.className='err'; err++;
+    tr.children[3].firstChild.textContent=String(e);
+  }
+  tr.children[2].textContent=((Date.now()-s)/1000).toFixed(1)+' sn';
+  sum.textContent=`- OK ${ok} / HATA ${err} / ${tones.length}`;
+}
+const q=tones.map((t,i)=>[t,i]);
+await Promise.all([0,1].map(async()=>{while(q.length){const [t,i]=q.shift();await run(t,i);}}));
+sum.textContent+=' - BITTI';
+</script></body></html>

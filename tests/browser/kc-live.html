@@ -1,0 +1,86 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Knowledge Compressor canli</title>
+<style>
+body{font:14px system-ui;background:#0b0f14;color:#dbe4ee;margin:0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+h1{font-size:16px;margin:8px 12px;flex:none}
+#log{flex:0 0 26%;overflow:auto;padding:0 12px;font:12px ui-monospace,monospace;color:#9fb0c3;border-bottom:2px solid #223}
+.ok{color:#4ade80}.err{color:#f87171}
+iframe{flex:1;width:100%;border:0;min-height:0}
+</style></head><body>
+<h1>Knowledge Compressor - drone metni, gercek uygulama, gercek bonsai <span id="sum"></span></h1>
+<div id="log"></div>
+<iframe id="app" src="/"></iframe>
+<script type="module">
+const fr=document.getElementById('app'), logEl=document.getElementById('log'), sum=document.getElementById('sum');
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const doc=()=>fr.contentDocument, win=()=>fr.contentWindow, q=s=>doc().querySelector(s);
+const log=(m,c='')=>{logEl.insertAdjacentHTML('beforeend',`<div class="${c}">${m}</div>`);logEl.scrollTop=1e9;};
+async function until(fn,ms=120000){const s=Date.now();for(;;){try{const v=fn();if(v)return v;}catch{} if(Date.now()-s>ms)throw new Error('zaman asimi');await sleep(150);}}
+function setVal(el,v){Object.getOwnPropertyDescriptor(win().HTMLTextAreaElement.prototype,'value').set.call(el,v);el.dispatchEvent(new (win().Event)('input',{bubbles:true}));}
+const check=(ok,okMsg,errMsg)=>{ if(!ok){ throw new Error(errMsg); } log(okMsg,'ok'); };
+// The 6 irrelevant sentences of the drone text (dog, wifi, joke, coffee, sandwich, rent). They must NOT be highlighted.
+const NOISE=["neighbor's dog barked","wifi kept dropping","joke about the pilot","coffee machine broke","ate my sandwich","rent is due friday"];
+try{
+  const SRC=(await (await fetch('/tests/drone.txt')).text()).trim();
+  await new Promise(r=>{ if(fr.contentDocument?.readyState==='complete') r(); else fr.addEventListener('load',()=>r(),{once:true}); });
+  await sleep(1200); win().localStorage.clear(); fr.contentWindow.location.reload(); await sleep(1800);
+  const btn=await until(()=>[...doc().querySelectorAll('button')].find(b=>b.textContent.includes('Knowledge Compressor')));
+  log(`1. mod butonu var; kaynak ${SRC.length} karakter`,'ok');
+  setVal(q('#inputText'),SRC); await sleep(300);
+  const t0=Date.now(); btn.click();
+  await until(()=>q('[data-testid=cluster-view]'));
+  log(`2. kumeler geldi (${((Date.now()-t0)/1000).toFixed(1)} sn)`,'ok');
+  log('3. '+q('[data-testid=cluster-stats]').textContent,'ok');
+  const cards=[...doc().querySelectorAll('[data-testid^=cluster-][data-color]')];
+  const colors=cards.map(c=>c.dataset.color);
+  check(new Set(colors).size===colors.length, `4. ${cards.length} kume, renkler benzersiz: ${colors.join(', ')}`, 'renkler tekrar ediyor');
+  const map=q('[data-testid=source-map]');
+  check(map.textContent===SRC, '5. kaynak metin birebir korunmus', 'kaynak metin bozuldu');
+  const marked=[...map.querySelectorAll('mark')].map(m=>m.textContent).join(' ');
+  const leaked=NOISE.filter(n=>marked.includes(n));
+  check(!leaked.length, '6. alakasiz 6 cumle (kopek, wifi, fikra, kahve, sandvic, kira) vurgulanmadi', 'alakasiz cumle vurgulandi: '+leaked.join(' | '));
+  const panel=q('[data-testid=keyword-panel]'); check(!!panel,'7. anahtar kelime yan paneli var','anahtar kelime paneli yok');
+  const chips=[...doc().querySelectorAll('[data-testid=kw-chip]')];
+  log(`8. ${chips.length} cip: `+chips.slice(0,8).map(c=>c.textContent).join(' · ')+' ...','ok');
+  const fs=el=>parseFloat(win().getComputedStyle(el).fontSize), fw=el=>parseInt(win().getComputedStyle(el).fontWeight);
+  const bodyFs=fs(q('[data-testid=cluster-0] .whitespace-pre-wrap')), chipFs=fs(chips[0]);
+  check(chipFs>bodyFs&&fw(chips[0])>=700, `9. yazi: ozet ${bodyFs}px, anahtar kelime ${chipFs}px, kalinlik ${fw(chips[0])}`, `anahtar kelime daha buyuk/kalin degil (${chipFs}px vs ${bodyFs}px)`);
+  check(!panel.closest('[data-testid^=cluster-][data-color]'), '10. panel ozet kartlarinin disinda, ayri katman', 'panel ozetin icinde');
+  const groups=[...doc().querySelectorAll('[data-testid^=kw-group-]')];
+  check(groups.length===cards.length&&groups.every((g,i)=>g.dataset.color===cards[i].dataset.color), '11. her kelime grubu kendi kumesinin rengini tasiyor', 'renk eslesmiyor');
+  const side=panel.getBoundingClientRect().left>cards[0].getBoundingClientRect().right-4;
+  log(`12. yerlesim: pencere ${win().innerWidth}px -> panel ${side?'ozetin YANINDA':'ozetin ALTINDA (dar pencere; 1024px ve uzeri yan yana)'}`,'ok');
+  cards[1].dispatchEvent(new (win().MouseEvent)('mouseover',{bubbles:true})); cards[1].dispatchEvent(new (win().MouseEvent)('mouseenter'));
+  await sleep(500);
+  const dim=[...map.querySelectorAll('mark')].filter(m=>m.className.includes('opacity-30')).length;
+  const dimKw=groups.filter(g=>g.className.includes('opacity-40')).length;
+  check(dim>0&&dimKw>0, `13. 2. kumenin ustune gelince ${dim} kaynak parcasi ve ${dimKw} kelime grubu soldu`, 'hover etkisi yok');
+  // ---- the INPUT BOX itself ----
+  const ta=q('#inputText'), hl=q('[data-testid=input-highlight]');
+  check(ta.value===SRC, `14. kaynak dosya girdi kutusunda (${ta.value.length} karakter)`, 'girdi kutusu bos/degisti');
+  check(!!hl, '15. girdi kutusunun altinda renk katmani var', 'girdi kutusunda renk katmani yok');
+  check(hl.textContent===ta.value, '16. renk katmani metni girdi ile birebir ayni', 'renk katmani metni farkli');
+  const csA=win().getComputedStyle(ta), csB=win().getComputedStyle(hl);
+  const props=['fontFamily','fontSize','lineHeight','paddingTop','paddingLeft','paddingRight','borderTopWidth','whiteSpace'];
+  const diff=props.filter(p=>csA[p]!==csB[p]);
+  check(!diff.length, '17. katman ile kutu ayni yazi tipi/aralik/kenar: '+props.length+' ozellik esit', 'katman kutuyla hizasiz: '+diff.map(p=>`${p} ${csA[p]} != ${csB[p]}`).join('; '));
+  const inMarks=[...hl.querySelectorAll('mark')];
+  const inColors=new Set(inMarks.map(m=>m.dataset.color));
+  check(inMarks.length>0&&inColors.size===cards.length, `18. girdi kutusunda ${inMarks.length} renkli parca, ${inColors.size} farkli renk: ${[...inColors].join(', ')}`, 'girdi kutusu renkleri kumelerle uyusmuyor');
+  const leakedIn=NOISE.filter(n=>inMarks.some(m=>m.textContent.includes(n)));
+  check(!leakedIn.length, '19. girdi kutusunda alakasiz cumleler renklenmemis', 'girdi kutusunda alakasiz cumle renkli: '+leakedIn.join(' | '));
+  const m0=inMarks[0].getBoundingClientRect(), t0r=ta.getBoundingClientRect();
+  check(m0.left>=t0r.left&&m0.right<=t0r.right+1&&m0.top>=t0r.top&&m0.bottom<=t0r.bottom+1, '20. renkli parca kutunun icinde, tasmiyor', 'renkli parca kutunun disina tasti');
+  const before=hl.querySelectorAll('mark').length;
+  cards[1].dispatchEvent(new (win().MouseEvent)('mouseover',{bubbles:true})); cards[1].dispatchEvent(new (win().MouseEvent)('mouseenter'));
+  await sleep(400);
+  const dimIn=[...hl.querySelectorAll('mark')].filter(m=>m.className.includes('opacity-20')).length;
+  check(dimIn>0&&dimIn<before, `21. kume kartinin ustune gelince girdi kutusundaki ${dimIn}/${before} parca soldu (secililer parlak)`, 'girdi kutusu hover ile baglanmadi');
+  setVal(ta, SRC+' extra'); await sleep(400);
+  check(!q('[data-testid=input-highlight]'), '22. metin duzenlenince eski renkler temizleniyor (yanlis yerde renk kalmaz)', 'metin degisti ama renkler kaldi');
+  setVal(ta, SRC); await sleep(400);
+  check(!!q('[data-testid=input-highlight]'), '23. metin eski haline donunce renkler geri geliyor', 'renkler geri gelmedi');
+  q('#inputText').scrollIntoView({block:'center'});
+  sum.textContent=' - BITTI'; document.title='Knowledge Compressor OK BITTI';
+}catch(e){log('HATA: '+e.message,'err'); sum.textContent=' - HATA'; document.title='Knowledge Compressor HATA';}
+</script></body></html>
