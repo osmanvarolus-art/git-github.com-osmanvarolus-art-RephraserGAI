@@ -99,11 +99,13 @@ function runHerdr(args: string[]): Promise<string> {
 // North Star's own truth: the factory log lines (goal opened, evaluated, merged, reverted), from the existing ns_feed.py.
 function readNorthStarLog(): Promise<{ time: string; source: string; threadTitle: string; status: string; text: string }[]> {
   return new Promise(resolve => {
-    execFile('python3', ['-B', path.join(homedir(), 'Projects', 'ns-ratchet', 'tools', 'ns_feed.py')], { timeout: 20000, maxBuffer: 8_000_000 }, (err, out) => {
+    const tools = path.join(homedir(), 'Projects', 'ns-ratchet', 'tools');
+    // ns_feed.py's command line ignores arguments and always uses 30 minutes; ask for 6 hours through its collect().
+    execFile('python3', ['-B', '-c', `import sys, json; sys.path.insert(0, ${JSON.stringify(tools)}); import ns_feed; print(json.dumps(ns_feed.collect(360), ensure_ascii=False))`], { timeout: 20000, maxBuffer: 8_000_000 }, (err, out) => {
       if (err) return resolve([]);
       try {
         const rows = (JSON.parse(out).sentences as { text: string; source: string }[]).filter(row => row.source === 'tick.log');
-        resolve(rows.slice(-40).map(row => {
+        resolve(rows.slice(-60).map(row => {
           const m = /^(\d{4}-\d\d-\d\dT[\d:+.-]+)\s+(.*)$/s.exec(row.text);
           return { time: m ? m[1] : '', source: 'North Star tick.log', threadTitle: 'North Star factory log', status: 'log', text: redactSensitive(m ? m[2] : row.text).slice(0, 600) };
         }));
