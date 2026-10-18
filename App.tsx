@@ -188,7 +188,7 @@ export default function App() {
     const textarea = inputRef.current;
     if (textarea) {
       textarea.style.height = 'auto';
-      const height = selectedPersona === 'agent-activity' ? Math.min(textarea.scrollHeight, 420) : textarea.scrollHeight;
+      const height = selectedPersona === 'agent-activity' ? Math.min(Math.max(textarea.scrollHeight, window.innerHeight * 0.6), window.innerHeight * 0.8) : textarea.scrollHeight;
       textarea.style.height = `${height}px`;
       textarea.style.overflowY = selectedPersona === 'agent-activity' && textarea.scrollHeight > height ? 'auto' : 'hidden';
     }

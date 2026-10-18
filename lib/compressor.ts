@@ -46,6 +46,7 @@ export const SEMANTIC_DNA_TONE = 'Semantic DNA: strict, industry-standard, atomi
 export const COMPRESSOR_SYSTEM = `You are a Principal Semantic Architect. Deconstruct the input into its atomic value components and return ONLY the structured result.
 ANTI-MIRRORING RULE (mandatory): do NOT mirror the user's wording, slang, spelling, language or register. The source may be informal, idiosyncratic or mixed-language. Restate every idea in standard industry terminology, the way a domain professional would write it, and never quote the source's informal phrases in rewritten_text.
 universal_keywords (mandatory, per cluster): the strict, established industry terms of art (in English) that REPLACE the user's informal concepts. Do not copy the user's own words unless they are already the standard term (for example a protocol, product or algorithm name).
+EXCEPTION to anti-mirroring (mandatory): coined names, named doctrines, rules, frameworks and quoted terms that the source introduces (for example a capitalized or hyphenated invented term) are payload, not slang. Keep each one verbatim in rewritten_text, with a short standard-terms gloss beside it if useful. Never delete or rename an unfamiliar concept because it is not industry standard.
 Write rewritten_text and universal_keywords in English.`;
 export interface Parsed { clusters: Cluster[]; dropped: number; totalBytes: number }
 export interface Run { text: string; cluster: number } // cluster -1 = not mapped to any cluster
@@ -78,7 +79,9 @@ Rules:
 - Ignore irrelevant stories, jokes, complaints and small talk: leave those sentences out of every cluster.
 - A sentence belongs to at most one cluster.
 - Group by topic. Never put a sentence into a cluster it does not belong to just to raise coverage, and never merge unrelated topics to reach a cluster count.
-- Keep concrete facts (numbers, names, decisions) in rewritten_text; do not replace them with vague wording.
+- Cluster by subject domain (for example food logistics, local AI, building insulation), not by shared vocabulary. Words like temperature, thermal, cold or insulation do not make two domains one topic: keep them in separate clusters, even if that needs the maximum of 5.
+- Interleaved or shuffled sentences are common: assign every sentence by its own meaning, not by its neighbours.
+- Keep concrete facts (numbers, names, decisions) in rewritten_text; do not replace them with vague wording. Keep each mechanism and consequence (for example alerts on failure, cargo loss, compliance), not only the headline claim.
 - universal_keywords: 2-6 strict industry terms per cluster that replace the user's informal concepts (not the user's own wording).
 
 SOURCE:
@@ -197,6 +200,23 @@ export function mirrorRatio(text: string, clusters: Cluster[]): number {
   return kws.filter(k => src.includes(' ' + norm(k) + ' ')).length / kws.length;
 }
 
+// Coined or quoted terms in the source: "quoted", Hyphen-Ated with a capital, or two+ Capitalized words in a row.
+export function sourceEntities(text: string): string[] {
+  const found = new Set<string>();
+  for (const m of text.matchAll(/["“']([^"”'\n]{2,40})["”']/g)) found.add(m[1]);
+  for (const m of text.matchAll(/\b[\p{L}\d]+(?:-[\p{L}\d]+)+\b/gu)) if (/\p{Lu}/u.test(m[0])) found.add(m[0]);
+  for (const m of text.matchAll(/\b\p{Lu}[\p{L}\d]+(?:\s+\p{Lu}[\p{L}\d]+)+\b/gu)) found.add(m[0]);
+  return [...found];
+}
+
+// Share of those terms that survive into the rewritten text (ContextEntityRecall). A signal: sentence-start words can false-positive.
+export function entityRecall(text: string, clusters: Cluster[]): number {
+  const ents = sourceEntities(text);
+  if (!ents.length) return 1;
+  const out = ' ' + norm(clusters.map(c => c.rewritten_text + ' ' + c.universal_keywords.join(' ')).join(' ')) + ' ';
+  return ents.filter(e => out.includes(' ' + norm(e) + ' ')).length / ents.length;
+}
+
 export const MAX_OVERLAP = 0.05;
 export const MIN_COVERAGE = 0.5; // chatty sources legitimately leave much unmapped
 export const MAX_MIRROR = 0.5;
@@ -219,7 +239,7 @@ export async function compressBest(
       const overlap = overlapRatio(text, parsed.clusters);
       const cov = coverage(text, parsed.clusters);
       const mirror = mirrorRatio(text, parsed.clusters);
-      const score = cov - 3 * overlap - mirror;
+      const score = cov - 3 * overlap - mirror + entityRecall(text, parsed.clusters);
       if (!best || score > best.score) best = { raw, parsed, overlap, cov, mirror, score };
       if (overlap <= MAX_OVERLAP && cov >= MIN_COVERAGE && mirror <= MAX_MIRROR) break;
     } catch (e) {

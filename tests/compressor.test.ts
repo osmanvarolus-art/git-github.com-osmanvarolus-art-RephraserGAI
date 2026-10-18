@@ -216,3 +216,12 @@ test('compressBest: mirroring answer is retried, the less mirrored one wins', as
   const r = await compressBest(src, async () => answers[n++]);
   assert.equal(n, 2); assert.equal(r.mirror, 0);
 });
+
+test('entityRecall: coined and quoted terms must survive', async () => {
+  const { sourceEntities, entityRecall } = await import('../lib/compressor.ts');
+  const src = 'We use "Havur Huvur" layers and the Proof-over-Claims rule. Nothing else matters.';
+  assert.deepEqual(sourceEntities(src).sort(), ['Havur Huvur', 'Proof-over-Claims']);
+  const mk = (t: string) => [{ color_theme: 'green' as const, rewritten_text: t, source_byte_ranges: [] as [number, number][], universal_keywords: ['x'] }];
+  assert.equal(entityRecall(src, mk('Havur Huvur and Proof-over-Claims kept')), 1);
+  assert.equal(entityRecall(src, mk('generic smoothed text')), 0);
+});
