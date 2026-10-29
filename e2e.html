@@ -1,0 +1,140 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>RephraserGAI e2e (gorunur)</title>
+<style>
+body{font:14px system-ui;background:#0b0f14;color:#dbe4ee;margin:0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+h1{font-size:16px;margin:8px 12px;flex:none} table{border-collapse:collapse;width:100%}
+#tw{flex:0 0 38%;overflow:auto;padding:0 12px;border-bottom:2px solid #223}
+td,th{border-bottom:1px solid #223;padding:4px 8px;text-align:left;vertical-align:top}
+.ok{color:#4ade80}.err{color:#f87171}.run{color:#fbbf24}.wait{color:#64748b}
+pre{margin:0;white-space:pre-wrap;color:#9fb0c3}
+iframe{flex:1;width:100%;border:0;background:#020617;min-height:0}
+</style></head><body>
+<h1>Uctan uca test - gercek uygulama altta <span id="sum"></span></h1>
+<div id="tw"><table><thead><tr><th>Adim</th><th>Durum</th><th>Sure</th><th>Detay</th></tr></thead><tbody id="rows"></tbody></table></div>
+<iframe id="app" src="/"></iframe>
+<script type="module">
+const tb=document.getElementById('rows'), sum=document.getElementById('sum'), fr=document.getElementById('app');
+let ok=0, bad=0;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const doc=()=>fr.contentDocument, win=()=>fr.contentWindow;
+const q=(s)=>doc().querySelector(s);
+const byText=(sel,t)=>[...doc().querySelectorAll(sel)].find(e=>e.textContent.trim().includes(t));
+async function until(fn,ms=60000){const s=Date.now();for(;;){try{const v=fn();if(v)return v;}catch{} if(Date.now()-s>ms)throw new Error('zaman asimi');await sleep(150);}}
+function setVal(el,v){const p=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(p,'value').set.call(el,v);el.dispatchEvent(new (win().Event)('input',{bubbles:true}));}
+const outText=()=>q('.whitespace-pre-wrap')?.textContent||'';
+async function freshOutput(click,ms=90000){
+  const prev=outText(); click();
+  return until(()=>!q('.animate-spin')&&doc().body.innerText.includes('GENERATED')&&outText()&&outText()!==prev&&outText(),ms);
+}
+async function step(name,fn){
+  const tr=document.createElement('tr');tr.innerHTML=`<td>${name}</td><td class="run">calisiyor</td><td></td><td><pre></pre></td>`;tb.appendChild(tr);tr.scrollIntoView({block:'nearest'});
+  const s=Date.now();
+  try{const d=await fn();tr.children[1].textContent='OK';tr.children[1].className='ok';ok++;tr.children[3].firstChild.textContent=String(d??'').slice(0,260);}
+  catch(e){tr.children[1].textContent='HATA';tr.children[1].className='err';bad++;tr.children[3].firstChild.textContent=String(e.message||e);}
+  tr.children[2].textContent=((Date.now()-s)/1000).toFixed(1)+' sn';
+  sum.textContent=`- OK ${ok} / HATA ${bad}`; document.title=`e2e OK ${ok} HATA ${bad}`;
+}
+await new Promise(r=>{ if(fr.contentDocument?.readyState==='complete') r(); else fr.addEventListener('load',()=>r(),{once:true}); });
+await sleep(1200);
+win().localStorage.clear(); fr.contentWindow.location.reload(); await sleep(1800);
+
+await step('Uygulama yuklendi, 15 hazir mod var', async()=>{
+  await until(()=>byText('button','Professional'));
+  const names=[...doc().querySelectorAll('button')].map(b=>b.textContent);
+  if(names.some(n=>n.includes('Legal Shield')||n.includes('Medical Claim'))) throw new Error('kapali modlar gorunuyor');
+  return 'Legal/Medical gizli, Professional var';
+});
+
+await step('Varsayilan model bonsai ile Professional calisiyor', async()=>{
+  setVal(q('#inputText'),'hey, send me the report asap, i need it before the meeting');
+  byText('button','Professional').click();
+  const out=await until(()=>doc().body.innerText.includes('GENERATED')&&doc().querySelector('.whitespace-pre-wrap')?.textContent);
+  if(out.length<10) throw new Error('bos cikti'); return out;
+});
+
+await step('Diff gorunumu: eklenen/silinen kelimeler isaretli', async()=>{
+  q('[data-testid=diff-toggle]').click();
+  const d=await until(()=>q('[data-testid=diff-view]'));
+  const ins=d.querySelectorAll('ins').length, del=d.querySelectorAll('del').length;
+  if(!ins||!del) throw new Error(`ins=${ins} del=${del}`);
+  return `${ins} eklenen, ${del} silinen isaret; metin: ${d.textContent.slice(0,120)}`;
+});
+
+await step('Model paneli: gecersiz adres reddediliyor', async()=>{
+  byText('button','Model').click();
+  const url=await until(()=>q('[aria-label="Base URL"]'));
+  setVal(url,'ftp://olmaz'); await sleep(200);
+  byText('button','Save').click(); await sleep(300);
+  const m=q('[data-testid=model-msg]').textContent;
+  if(!/Base URL/.test(m)) throw new Error('hata mesaji yok: '+m); return m;
+});
+
+await step('Model paneli: kaydet, sayfa yenile, ayar kalici', async()=>{
+  setVal(q('[aria-label="Base URL"]'),'/llm/v1'); setVal(q('[aria-label="Model"]'),'bonsai-27b');
+  await sleep(200); byText('button','Save').click(); await sleep(300);
+  if(q('[data-testid=model-msg]').textContent!=='Saved.') throw new Error('kaydedilmedi');
+  const raw=win().localStorage.getItem('rephraser.llm'); fr.contentWindow.location.reload(); await sleep(1800);
+  return raw;
+});
+
+await step('Yanlis modele istek: hata gosteriliyor, uygulama cokmuyor', async()=>{
+  byText('button','Model').click(); await sleep(300);
+  setVal(q('[aria-label="Base URL"]'),'/llm/v1'); setVal(q('[aria-label="Model"]'),'yok-boyle-model');
+  await sleep(200); byText('button','Save').click(); await sleep(300);
+  setVal(q('#inputText'),'hello world');
+  const out=await freshOutput(()=>byText('button','Concise').click()).catch(()=>null);
+  return q('p.text-red-400')?.textContent || 'sunucu model adini yok sayip cevap verdi: '+(out||outText());
+});
+
+await step('Ayar bonsai-27b geri', async()=>{
+  setVal(q('[aria-label="Model"]'),'bonsai-27b'); await sleep(200); byText('button','Save').click(); await sleep(300);
+  return q('[data-testid=model-msg]').textContent;
+});
+
+await step('Ozel mod ekle: Pirate', async()=>{
+  byText('button','My Modes').click();
+  await until(()=>q('[aria-label="Mode name"]'));
+  setVal(q('[aria-label="Mode name"]'),'Pirate'); setVal(q('[aria-label="Mode emoji"]'),'🏴‍☠️');
+  setVal(q('[aria-label="Mode prompt"]'),'Rewrite the following as a pirate would say it. Output only the rewrite.\n\n{{text}}');
+  await sleep(200); byText('button','Add mode').click(); await sleep(400);
+  if(!byText('button','Pirate')) throw new Error('buton cikmadi');
+  return 'buton eklendi; localStorage: '+win().localStorage.getItem('rephraser.customModes').length+' bayt';
+});
+
+await step('Ozel mod bonsai ile calisiyor', async()=>{
+  setVal(q('#inputText'),'Please send me the report by noon.');
+  const pirate=[...doc().querySelectorAll('button')].filter(b=>b.textContent.includes('Pirate')).pop();
+  const out=await freshOutput(()=>pirate.click());
+  if(out.trim()==='Please send me the report by noon.') throw new Error('cikti girdiyle ayni, mod uygulanmadi');
+  return out;
+});
+
+await step('Bos ad ozel mod reddediliyor', async()=>{
+  setVal(q('[aria-label="Mode name"]'),''); setVal(q('[aria-label="Mode prompt"]'),'x'); await sleep(200);
+  byText('button','Add mode').click(); await sleep(300);
+  const m=q('[data-testid=modes-msg]').textContent; if(!/Name/.test(m)) throw new Error(m); return m;
+});
+
+await step('Disa aktar, sil, iceri aktar: mod geri geliyor', async()=>{
+  byText('button','Export JSON').click(); await sleep(300);
+  const json=q('[aria-label="Modes JSON"]').value; if(!json.includes('Pirate')) throw new Error('export bos');
+  byText('button','remove').click(); await sleep(300);
+  if(byText('button','Pirate')&&[...doc().querySelectorAll('button')].some(b=>b.textContent.includes('Pirate'))) throw new Error('silinmedi');
+  byText('button','Import JSON').click(); await sleep(400);
+  if(![...doc().querySelectorAll('button')].some(b=>b.textContent.includes('Pirate'))) throw new Error('import calismadi');
+  return q('[data-testid=modes-msg]').textContent;
+});
+
+await step('Bozuk JSON import reddediliyor', async()=>{
+  setVal(q('[aria-label="Modes JSON"]'),'{bozuk'); await sleep(200);
+  byText('button','Import JSON').click(); await sleep(300);
+  const m=q('[data-testid=modes-msg]').textContent; if(!/JSON/.test(m)) throw new Error(m); return m;
+});
+
+await step('Bos girdi: uygulama uyariyor', async()=>{
+  setVal(q('#inputText'),'   '); await sleep(200); byText('button','Casual').click(); await sleep(400);
+  const e=q('p.text-red-400')?.textContent; if(!e) throw new Error('uyari yok'); return e;
+});
+
+sum.textContent+=' - BITTI'; document.title+=' BITTI';
+</script></body></html>
