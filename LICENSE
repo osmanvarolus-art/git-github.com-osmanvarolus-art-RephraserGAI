@@ -1,0 +1,26 @@
+Copyright (c) 2026 Osman Varol. All rights reserved.
+
+EchoWrite is published for viewing and evaluation only. The source code is
+visible to the public, but it is not open source.
+
+Permission is granted to read the code and to run it locally for personal,
+non-commercial evaluation. Without prior written permission from the copyright
+holder you may NOT:
+
+  1. copy, modify, merge, publish, distribute, sublicense, or sell the code or
+     any substantial part of it;
+  2. use the code, or work derived from it, in a product or service, whether
+     commercial or not;
+  3. use the code, its documents, or its text to train, fine-tune, or evaluate
+     machine learning models for any purpose other than your own private
+     evaluation of this project;
+  4. remove or alter this notice or the copyright notices in the files.
+
+No license is granted by implication or estoppel. All rights not expressly
+granted are reserved.
+
+The software is provided "as is", without warranty of any kind, express or
+implied. The copyright holder is not liable for any claim, damages, or other
+liability arising from the use of the software.
+
+Contact for permission requests: open an issue on this repository.

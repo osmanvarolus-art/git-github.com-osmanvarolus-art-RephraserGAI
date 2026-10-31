@@ -18,3 +18,9 @@ View your app in AI Studio: https://ai.studio/apps/drive/1ZcOqaeMCmi3YZH3iaE7bIS
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+---
+
+## License and ownership
+
+Copyright (c) 2026 Osman Varol. All rights reserved. The code is public so it can be read and evaluated; it is **not** open source. See [LICENSE](LICENSE). For any other use, ask first by opening an issue.
